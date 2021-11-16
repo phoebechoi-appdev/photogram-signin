@@ -1,4 +1,50 @@
 class UsersController < ApplicationController
+
+  def authenticate
+    #get the username from params
+    #get the password from params
+    un = params.fetch("input_username")
+    pw = params.fetch("input_password")
+
+    #look up the record from the db matching username
+    #if there's no record, redirect back to sign in form 
+    user = User.where({ :username => un}).at(0)
+
+    if user == nil
+      redirect_to("/user_sign_in", { :alert => "No one by that name 'round these parts'"})
+    else
+      #if there is a record, check to see if password matches
+      if user.authenticate(pw)
+        #if so, set the cooke
+        session.store(:user_id, user.id)
+
+        redirect_to("/", { :notice => "Welcome back, " + user.username + "!" })
+        #if not, redirect back to sign in form
+      else 
+        redirect_to("/user_sign_in", { :alert => "Nice try, sucker!"})
+      end
+    end
+  end
+
+
+  def toast_cookies
+    reset_session
+    redirect_to("/", {:notice => "See ya later!"})
+  
+  end
+
+  def new_registration_form
+
+    render({ :template => "users/signup_form.html.erb"})
+  end
+
+  def new_session_form
+
+    render({ :template => "users/signin_form.html.erb"})
+  end
+  
+  
+  
   def index
     @users = User.all.order({ :username => :asc })
 
@@ -16,10 +62,18 @@ class UsersController < ApplicationController
     user = User.new
 
     user.username = params.fetch("input_username")
+    user.password = params.fetch("input_password")
+    user.password_confirmation = params.fetch("input_password_confirmation")
+    save_status = user.save
 
-    user.save
+    if save_status == true
+      session.store(:user_id, user.id)
 
-    redirect_to("/users/#{user.username}")
+      redirect_to("/users/#{user.username}", { :notice => "Welcome, " + user.username + "!"})
+    else 
+      redirect_to("/user_sign_up", { :alert => user.errors.full_messages.to_sentence })
+    end
+
   end
 
   def update
